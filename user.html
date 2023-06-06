@@ -163,10 +163,10 @@
           clickEdit(data) {
             this.showModal = true;
             this.isAdd = false;
-            this.editData = data;
+            this.editData = { ...data };
           },
           clickDelete(data) {
-            this.delUser(data);
+            this.delUser({ ...data });
           },
           onConfirmAdd() {
             this.$refs.userForm.validate(async (valid) => {
@@ -224,7 +224,7 @@
           showModal(n) {
             if (n) {
               this.$nextTick(() => {
-                this.isAdd ? this.resetForm() : (this.form = this.editData);
+                this.isAdd ? this.resetForm() : (this.form = { ...this.editData });
               });
             }
           }

@@ -370,18 +370,18 @@
           clickEdit(data) {
             this.showSetting = true;
             this.isAdd = false;
-            this.editData = data;
+            this.editData = { ...data };
           },
           clickDelete(data) {
-            this.delCalendar(data);
+            this.delCalendar({ ...data });
           },
           onConfirmAdd() {
             this.$refs.calendarForm.validate(async (valid) => {
               if (valid) {
                 if (this.isAdd) {
-                  await this.addCalendar(this.form);
+                  await this.addCalendar({ ...this.form });
                 } else {
-                  await this.editCalendar(this.form);
+                  await this.editCalendar({ ...this.form });
                 }
               } else {
                 return false;
@@ -402,7 +402,7 @@
             }
           },
           async editCalendar(params) {
-            const res = await calendarController.set(params);
+            const res = await calendarController.set({ ...params });
             if (res) {
               this.$message.success("编辑成功");
               this.showSetting = false;
