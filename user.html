@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>人员管理</title></title>
+    <script src="./packages/vue@2.7.14.js"></script>
+    <script src="./utils/date.js"></script>
+    <script src="./utils/store.js"></script>
+    <script src="./Model/user.js"></script>
+    <script src="./Controller/user.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="./packages/element@2.15.13.css">
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
+    <!-- 引入组件库 -->
+    <script src="./packages/element@2.15.13.js"></script>
+    <style>
+      #app {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        margin: 100px auto;
+      }
+      .btns {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 10px;
+      }
+      .table {
+        max-width: 600px;
+        border-top: 1px solid #ebeef5;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="btns">
+        <el-button @click="() => window.location.href = './index.html'" type="primary" size="mini">返回团队日历</el-button>
+        <el-button @click="clickAdd" type="primary" size="mini">新增</el-button>
+      </div>
+      <!-- <table cellspacing="0">
+        <thead>
+          <tr>
+            <td v-for="(item, index) in columns" :key="item.field">
+              {{ item.title }}
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="data in list" :key="data[rowKey]">
+            <td v-for="(item, index) in columns" :key="item.field">
+              <template v-if="item.field === 'operation'">
+                <el-link @click.native="clickEdit(data)">编辑</el-link>
+                <el-popconfirm
+                  title="确定删除吗？"
+                  @confirm="clickDelete(data)"
+                >
+                  <el-link slot="reference">删除</el-link>
+                </el-popconfirm>
+              </template>
+              <template v-else>
+                {{ item.format ? item.format(data, index) : data[item.field] }}
+              </template>
+            </td>
+          </tr>
+        </tbody>
+      </table> -->
+
+      <el-table class="table" :data="list">
+        <template v-for="item in columns">
+          <el-table-column
+            v-if="item.field === 'operation'"
+            fixed="right"
+            :label="item.title"
+          >
+            <template slot-scope="scope">
+              <el-link @click.native="clickEdit(scope.row)">编辑</el-link>
+              <el-popconfirm
+                title="确定删除吗？"
+                @confirm="clickDelete(scope.row)"
+              >
+                <el-link slot="reference">删除</el-link>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-else
+            :prop="item.field"
+            :label="item.title"
+            :formatter="item.formatter"
+          >
+          </el-table-column>
+        </template>
+        
+      </el-table>
+
+      <el-dialog :visible.sync="showModal" :title="isAdd ? '新增人员' : '编辑人员'" width="500px">
+        <el-form :model="form" :rules="rules" ref="userForm" label-width="80px">
+          <el-form-item label="姓名" prop="name">
+            <el-input v-model="form.name"></el-input>
+          </el-form-item>
+          <el-form-item label="电话" prop="tel">
+            <el-input v-model="form.tel"></el-input>
+          </el-form-item>
+          <el-form-item label="性别" prop="sex">
+            <el-switch 
+              v-model="form.sex" 
+              active-text="男"
+              inactive-text="女" 
+              :active-value="1" 
+              :inactive-value="2"
+            >
+            </el-switch>
+          </el-form-item>
+        </el-form>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="showModal = false">取 消</el-button>
+          <el-button type="primary" @click="onConfirmAdd">确 定</el-button>
+        </span>
+      </el-dialog>
+    </div>
+
+    <script>
+      const store = new Store('user');
+      // const initForm 
+      new Vue({
+        el: "#app",
+        data() {
+          return {
+            list: [],
+            columns: [
+              { title: '姓名', field: 'name', },
+              { title: '电话', field: 'tel', },
+              { title: '性别', field: 'sex', formatter: (data) => data.sex === 1 ? '男' : '女' },
+              { title: '操作', field: 'operation', },
+            ],
+            rowKey: 'name',
+            showModal: false,
+            isAdd: true,
+            editData: null,
+            form: {
+              name: '',
+              tel: '',
+              sex: 2,  // male: 1 female: 2
+            },
+            rules: {
+              name: [
+                { required: true, message: '请输入姓名', }
+              ],
+            }
+          }
+        },
+        methods: {
+          clickAdd() {
+            this.showModal = true;
+            this.isAdd = true;
+          },
+          clickEdit(data) {
+            this.showModal = true;
+            this.isAdd = false;
+            this.editData = data;
+          },
+          clickDelete(data) {
+            this.delUser(data);
+          },
+          onConfirmAdd() {
+            this.$refs.userForm.validate(async (valid) => {
+              if (valid) {
+                if (this.isAdd) {
+                  await this.addUser(this.form);
+                } else {
+                  await this.editUser(this.form);
+                }
+              } else {
+                return false;
+              }
+            });
+          },
+          resetForm(formName) {
+            this.$refs.userForm.resetFields();
+          },
+          async addUser(params) {
+            const res = await userController.add(params);
+            if (res) {
+              this.$message.success('新增成功');
+              this.showModal = false;
+              this.getList();
+            } else {
+              this.$message.error('姓名已被占用');
+            }
+          },
+          async editUser(params) {
+            const res = await userController.edit(params);
+            if (res) {
+              this.$message.success('编辑成功');
+              this.showModal = false;
+              this.getList();
+            } else {
+              this.$message.error('用户不存在');
+            }
+          },
+          async delUser(data) {
+            const res = await userController.del(data.code);
+            if (res) {
+              this.$message.success('删除成功');
+              this.getList();
+            } else {
+              this.$message.error('用户不存在');
+            }
+          },
+          async getList() {
+            this.list = await userController.getList();
+          }
+        },
+        created() {
+          this.getList();
+        },
+        watch: {
+          showModal(n) {
+            if (n) {
+              this.$nextTick(() => {
+                this.isAdd ? this.resetForm() : (this.form = this.editData);
+              });
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- <title>露露工作日历</title> -->
+    <title>工作日历</title>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14"></script> -->
+    <script src="./packages/vue@2.7.14.js"></script>
+    <script src="./utils/date.js"></script>
+    <script src="./utils/qs.js"></script>
+
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      a {
+        text-decoration: none;
+      }
+      .calendar-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        margin: 100px auto;
+      }
+      .calendar-title {
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 1.8;
+      }
+      .calendar {
+        border: 1px solid rgb(20, 80, 20);
+      }
+      .rows {
+        width: max-content;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: nowrap;
+      }
+      .title {
+        width: 100px;
+        text-align: center;
+        line-height: 2;
+        font-weight: bold;
+      }
+      .column {
+        width: 100px;
+        height: 100px;
+      }
+      .column .type {
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .column .type.is-today::after {
+        content: "";
+        border: 1px solid blue;
+        position: absolute;
+        z-index: 1;
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+      }
+      .work-time {
+        height: 3em;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+      .type1 {
+        color: #fff;
+        background-color: #000;
+      }
+      .type2 {
+        color: #fff;
+        background-color: #000;
+      }
+      .type3 {
+        color: #fff;
+        background-color: rgb(20, 80, 20);
+      }
+      .type4 {
+        color: #fff;
+        background-color: rgb(20, 80, 20);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="label">
+        <span>年份</span>
+        <select name="year" id="year" v-model="year">
+          <option v-for="item in yearList" :value="item" :key="item">
+            {{item}}年
+          </option>
+        </select>
+      </div>
+      <div class="label">
+        <span>月份</span>
+        <select name="month" id="month" v-model="month">
+          <option v-for="item in monthList" :value="item" :key="item">
+            {{item + 1}}月
+          </option>
+        </select>
+      </div>
+
+      <div class="calendar-wrap">
+        <div class="calendar-title">
+          <a
+            class="pre"
+            href="javascript: void(0)"
+            title="上个月"
+            @click="preMonth"
+            >&lt;</a
+          >
+          <span>{{year}}年{{month + 1}}月</span>
+          <a
+            class="next"
+            href="javascript: void(0)"
+            title="下个月"
+            @click="nextMonth"
+            >&gt;</a
+          >
+        </div>
+        <div class="calendar">
+          <div class="rows">
+            <div class="title" v-for="title in weekTitle" :key="title">
+              {{title}}
+            </div>
+          </div>
+          <div class="rows" v-for="(item, index) in days" :key="index">
+            <div
+              class="column"
+              v-for="(subItem, subIndex) in item"
+              :key="index"
+            >
+              <div
+                v-if="subItem"
+                class="type"
+                :class="['type' + getDateWorkInfo(new Date(year, month, subItem)).type, isToday(year, month, subItem) ? 'is-today' : '']"
+              >
+                <span class="date">{{subItem}}</span>
+                <div class="work-type">
+                  {{ getDateWorkInfo(new Date(year, month, subItem)).desc }}
+                </div>
+                <div class="work-time">
+                  {{ getDateWorkInfo(new Date(year, month,
+                  subItem)).workTime.join(' ') }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const circle = [1, 2, 3, 4];
+      const circleMap = {
+        1: {
+          type: 1,
+          desc: "白班",
+          workTime: ["8:00~17:30"],
+          freeTime: ["18:00~23:00"],
+          color: "#fff",
+          bgColor: "#000",
+        },
+        2: {
+          type: 2,
+          desc: "夜班",
+          workTime: ["8:00~11:30", "17:30~0:00"],
+          freeTime: [],
+          color: "#fff",
+          bgColor: "#000",
+        },
+        3: {
+          type: 3,
+          desc: "下夜班",
+          workTime: ["0:00~8:00"],
+          freeTime: ["8:00~23:00"],
+          color: "#fff",
+          bgColor: "rgb(20, 80, 20)",
+        },
+        4: {
+          type: 4,
+          desc: "空白班",
+          workTime: [],
+          freeTime: ["8:00~23:00"],
+          color: "#fff",
+          bgColor: "rgb(20, 80, 20)",
+        },
+      };
+
+      new Vue({
+        el: "#app",
+        data() {
+          return {
+            yearList: [],
+            monthList: [],
+            year: new Date().getFullYear(),
+            month: new Date().getMonth(),
+            days: [],
+            weekTitle: ["一", "二", "三", "四", "五", "六", "日"],
+            circle,
+            // circleBeginDate: new Date(2023, 2, 4),
+            circleBeginDate: new Date(2023, 4, 22),
+          };
+        },
+        methods: {
+          set30year() {
+            const thisYear = new Date().getFullYear();
+            const list = [];
+            for (let i = 0; i < 30; i++) {
+              list.push(thisYear + i);
+            }
+            this.yearList = list;
+          },
+          set12month() {
+            const list = [];
+            for (let i = 0; i < 12; i++) {
+              list.push(i);
+            }
+            this.monthList = list;
+          },
+          isLeapYear: dateUtil.isLeapYear,
+          getMonthTotalDays: dateUtil.getMonthTotalDays,
+          getDays(y = this.year, m = this.month) {
+            const days = dateUtil.getDays(y, m);
+            this.days = days;
+          },
+          getDateInfo: dateUtil.getDateInfo,
+          getDiffDay: dateUtil.getDiffDay,
+          getDateWorkInfo(date) {
+            const circleLen = this.circle.length;
+            const diffDay = this.getDiffDay(this.circleBeginDate, date);
+            // console.log(diffDay, (diffDay % circleLen + 4) % circleLen + 1, circleMap[(diffDay % circleLen + 4) % circleLen + 1])
+            return circleMap[(((diffDay % circleLen) + 4) % circleLen) + 1];
+          },
+          preMonth() {
+            const { year, month } = dateUtil.getPreMonth(this.year, this.month);
+            this.year = year;
+            this.month = month;
+          },
+          nextMonth() {
+            const { year, month } = dateUtil.getNextMonth(
+              this.year,
+              this.month
+            );
+            this.year = year;
+            this.month = month;
+          },
+          isToday: dateUtil.isToday,
+        },
+        created() {
+          this.set30year();
+          this.set12month();
+          this.getDays();
+        },
+        watch: {
+          year() {
+            this.getDays();
+          },
+          month() {
+            this.getDays();
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
